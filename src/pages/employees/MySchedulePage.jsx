@@ -1,161 +1,146 @@
-import React, { useState, useEffect } from 'react';
-import Button from '../../components/Button';
-import Modal from '../../components/Modal';
-// Giả định thư mục utils và service
-// import { formatDate } from '../../utils/format'; 
-// import { getMySchedule } from '../../services/scheduleService'; 
+import React, { useState, useEffect } from "react";
+import { mockMySchedules } from "../../mocks/dashboard";
+
+const STATUS_BADGE = {
+  UPCOMING: { label: "Sắp tới", className: "bg-blue-100 text-blue-700 border-blue-200" },
+  COMPLETED: { label: "Hoàn thành", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+};
 
 export default function MySchedulePage() {
-  const [scheduleData, setScheduleData] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState("ALL");
   const [selectedShift, setSelectedShift] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentWeek, setCurrentWeek] = useState('22/09/2026 - 28/09/2026'); // Mock data tuần hiện tại
 
-  // Mock API call
   useEffect(() => {
-    const fetchSchedule = async () => {
-      // Thay thế bằng call API thật: const data = await getMySchedule();
-      const mockData = [
-        { id: 1, date: '22/09/2026', day: 'T3', shift: 'Sáng', role: 'Phục vụ', time: '08:00 - 12:00', status: 'Đã xác nhận' },
-        { id: 2, date: '23/09/2026', day: 'T4', shift: 'Chiều', role: 'Phục vụ', time: '12:00 - 17:00', status: 'Đã xác nhận' },
-        { id: 3, date: '24/09/2026', day: 'T5', shift: 'Tối', role: 'Phục vụ', time: '17:00 - 22:00', status: 'Đã xác nhận' },
-        { id: 4, date: '25/09/2026', day: 'T6', shift: 'Sáng', role: 'Phục vụ', time: '08:00 - 12:00', status: 'Đã xác nhận' },
-        { id: 5, date: '26/09/2026', day: 'T7', shift: 'Chiều', role: 'Phục vụ', time: '12:00 - 17:00', status: 'Đã xác nhận' },
-      ];
-      setScheduleData(mockData);
-    };
-
-    fetchSchedule();
+    const timer = setTimeout(() => {
+      setSchedules(mockMySchedules || []);
+      setLoading(false);
+    }, 200);
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleShiftClick = (shift) => {
-    setSelectedShift(shift);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedShift(null);
-  };
-
-  const handleRequestExchange = () => {
-    // Logic để mở trang/modal đổi ca
-    console.log('Yêu cầu đổi ca:', selectedShift);
-    closeModal();
-    // alert('Tính năng đang phát triển');
-  };
-
-  // Mock days of the week
-  const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-  const shifts = ['Sáng', 'Chiều', 'Tối'];
+  const filteredSchedules = schedules.filter(
+    (s) => filterStatus === "ALL" || s.status === filterStatus
+  );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lịch làm việc</h1>
-          <p className="text-gray-500 mt-1">Xem lịch làm việc chi tiết của bạn.</p>
+          <h1 className="text-2xl font-bold text-slate-800">Lịch Làm Việc Của Tôi</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Xem lịch phân ca hàng tuần và chi tiết công việc trong từng ca
+          </p>
         </div>
-        <div className="flex bg-gray-200 rounded-lg p-1 mt-4 md:mt-0">
-          <button className="px-4 py-2 bg-white rounded-md shadow-sm text-sm font-medium text-gray-900">
-            Lịch của tôi
-          </button>
-          <button className="px-4 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700">
-            Lịch toàn bộ
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm">
+            <span className="text-slate-500">Tổng số ca tuần này: </span>
+            <span className="font-bold text-blue-600">{schedules.length} ca</span>
+          </div>
         </div>
       </div>
 
-      {/* Week Navigation */}
-      <div className="flex items-center space-x-4 mb-6">
-        <span className="text-gray-700 font-medium">{currentWeek}</span>
-        <button className="text-gray-500 hover:text-gray-700 font-medium text-sm">
-          &lt; Tuần trước
-        </button>
-        <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md font-medium text-sm">
-          Tuần này
-        </button>
-        <button className="text-gray-500 hover:text-gray-700 font-medium text-sm">
-          Tuần sau &gt;
-        </button>
+      {/* Filter Bar */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2">
+          {["ALL", "UPCOMING", "COMPLETED"].map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => setFilterStatus(status)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                filterStatus === status
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {status === "ALL" ? "Tất cả ca" : STATUS_BADGE[status]?.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-400">Tuần: 12/10/2026 - 18/10/2026</span>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 border-collapse">
-          <thead>
-            <tr>
-              <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-b border-gray-200">
-                Ca
-              </th>
-              {daysOfWeek.map((day) => (
-                <th key={day} className="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r border-gray-200 last:border-r-0">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {shifts.map((shiftName) => (
-              <tr key={shiftName}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
-                  {shiftName}
-                </td>
-                {daysOfWeek.map((day) => {
-                  const shift = scheduleData.find((s) => s.day === day && s.shift === shiftName);
-                  return (
-                    <td key={`${shiftName}-${day}`} className="px-2 py-2 border-r border-gray-200 last:border-r-0 h-24 align-top w-32">
-                      {shift ? (
-                        <div 
-                          onClick={() => handleShiftClick(shift)}
-                          className="bg-blue-50 border border-blue-200 rounded p-2 cursor-pointer hover:bg-blue-100 transition-colors h-full flex flex-col justify-between"
-                        >
-                          <div>
-                             <p className="text-xs font-semibold text-blue-800">{shift.role}</p>
-                             <p className="text-xs text-blue-600 mt-1">{shift.time}</p>
-                          </div>
-                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 mt-2 self-start">
-                             {shift.status}
-                          </span>
-                        </div>
-                      ) : null}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Schedule Cards Grid */}
+      {loading ? (
+        <div className="py-12 text-center text-slate-500 text-sm">Đang tải lịch làm việc...</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {filteredSchedules.map((shift) => {
+            const badge = STATUS_BADGE[shift.status] || STATUS_BADGE.UPCOMING;
+            return (
+              <div
+                key={shift.id}
+                onClick={() => setSelectedShift(shift)}
+                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      {shift.dayOfWeek} ({shift.date})
+                    </span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${badge.className}`}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-800">{shift.shiftName}</h3>
+                  <p className="text-sm font-medium text-blue-600 mt-1">{shift.time}</p>
+                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-1 text-xs text-slate-600">
+                    <p>Vị trí: {shift.role}</p>
+                    <p>Khu vực: {shift.location}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="mt-4 w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"
+                >
+                  Xem chi tiết ca
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Shift Details Modal */}
+      {/* Modal Chi tiết ca */}
       {selectedShift && (
-         <Modal isOpen={isModalOpen} onClose={closeModal} title="Chi tiết ca">
-            <div className="p-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">
-                {`Thứ ${selectedShift.day.replace('T', '')} - ${selectedShift.date}`}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-bold text-slate-800">
+                Chi tiết {selectedShift.shiftName}
               </h3>
-              <div className="space-y-2 mb-6">
-                <p className="text-sm"><span className="font-semibold">Ca:</span> {selectedShift.shift} ({selectedShift.time})</p>
-                <p className="text-sm"><span className="font-semibold">Vai trò:</span> {selectedShift.role}</p>
-                <p className="text-sm flex items-center">
-                  <span className="font-semibold mr-2">Trạng thái:</span> 
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {selectedShift.status}
-                  </span>
-                </p>
-              </div>
-              <div className="flex justify-end space-x-3">
-                <Button variant="outline" onClick={closeModal}>
-                  Đóng
-                </Button>
-                <Button onClick={handleRequestExchange} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Yêu cầu đổi ca
-                </Button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedShift(null)}
+                className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-         </Modal>
+            <div className="space-y-2.5 text-sm text-slate-600">
+              <p><strong className="text-slate-800">Mã ca:</strong> {selectedShift.id}</p>
+              <p><strong className="text-slate-800">Ngày:</strong> {selectedShift.dayOfWeek}, {selectedShift.date}</p>
+              <p><strong className="text-slate-800">Khung giờ:</strong> {selectedShift.time}</p>
+              <p><strong className="text-slate-800">Vị trí:</strong> {selectedShift.role}</p>
+              <p><strong className="text-slate-800">Địa điểm:</strong> {selectedShift.location}</p>
+              <p><strong className="text-slate-800">Ghi chú:</strong> {selectedShift.note}</p>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedShift(null)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

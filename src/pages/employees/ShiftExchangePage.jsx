@@ -1,244 +1,262 @@
-import React, { useState, useEffect } from 'react';
-import Button from '../../components/Button';
-import Modal from '../../components/Modal';
-// import { getExchangeHistory, createExchangeRequest } from '../../services/shiftExchangeService'; // Mock service
-// import FormInput from '../../components/FormInput'; // Tuỳ vào thiết kế của component này
+import React, { useState, useEffect } from "react";
+import { mockLeaveRequests } from "../../mocks/dashboard";
 
-export default function ShiftExchangePage() {
-  // === STATE MANAGEMENT ===
-  const [activeTab, setActiveTab] = useState('create'); // 'create' | 'history'
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  
-  // Data States
-  const [myShifts, setMyShifts] = useState([]);
-  const [colleagueShifts, setColleagueShifts] = useState([]);
-  const [historyData, setHistoryData] = useState([]);
+const STATUS_BADGE = {
+  PENDING: { label: "Chờ duyệt", className: "bg-amber-100 text-amber-700 border-amber-200" },
+  APPROVED: { label: "Đã duyệt", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  REJECTED: { label: "Từ chối", className: "bg-rose-100 text-rose-700 border-rose-200" },
+};
 
-  // Form State
+export default function LeavePage() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState("ALL");
+
   const [formData, setFormData] = useState({
-    myShiftId: '',
-    colleagueShiftId: '',
-    reason: ''
+    leaveType: "Nghỉ phép năm",
+    startDate: "",
+    endDate: "",
+    shiftName: "",
+    reason: "",
   });
 
-  // === EFFECTS (MOCK API CALLS) ===
   useEffect(() => {
-    // Giả lập gọi API lấy danh sách ca của mình và ca của người khác
-    const fetchSelectOptions = async () => {
-      // Dựa theo ảnh "image 3.pdf", mock` data cho các ca làm việc
-      setMyShifts([
-        { id: '1', label: 'Thứ 3 - Sáng (08:00 - 12:00)' },
-        { id: '2', label: 'Thứ 5 - Tối (17:00 - 22:00)' }
-      ]);
-      setColleagueShifts([
-        { id: '101', label: 'Trần Văn Nam - Thứ 3 Chiều (12:00 - 17:00)' },
-        { id: '102', label: 'Lê Văn Bình - Thứ 6 Sáng (08:00 - 12:00)' }
-      ]);
-    };
-
-    // Giả lập gọi API lấy lịch sử đổi ca
-    const fetchHistory = async () => {
-      setHistoryData([
-        { id: 'REQ1', date: '21/09/2026', myShift: 'Thứ 3 (Sáng)', targetShift: 'Thứ 3 (Chiều)', targetPerson: 'Trần Văn Nam', status: 'Chờ người kia duyệt' },
-        { id: 'REQ2', date: '19/09/2026', myShift: 'Thứ 7 (Tối)', targetShift: 'Chủ Nhật (Sáng)', targetPerson: 'Mai Thị Lan', status: 'Chờ Manager duyệt' },
-        { id: 'REQ3', date: '15/09/2026', myShift: 'Thứ 2 (Sáng)', targetShift: 'Thứ 2 (Chiều)', targetPerson: 'Lê Hoàng Anh', status: 'Đã duyệt' },
-        { id: 'REQ4', date: '10/09/2026', myShift: 'Thứ 5 (Sáng)', targetShift: 'Thứ 5 (Tối)', targetPerson: 'Nguyễn Thị Hà', status: 'Từ chối' },
-      ]);
-    };
-
-    fetchSelectOptions();
-    fetchHistory();
+    const timer = setTimeout(() => {
+      setItems(mockLeaveRequests || []);
+      setLoading(false);
+    }, 200);
+    return () => clearTimeout(timer);
   }, []);
 
-  // === HANDLERS ===
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmitForm = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.myShiftId || !formData.colleagueShiftId) {
-      alert("Vui lòng chọn đầy đủ ca làm việc cần đổi.");
-      return;
-    }
-    setIsConfirmModalOpen(true);
+    if (!formData.startDate || !formData.endDate || !formData.reason) return;
+
+    const newItem = {
+      id: `LV-${Date.now().toString().slice(-3)}`,
+      leaveType: formData.leaveType,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      shiftName: formData.shiftName || "Cả ngày",
+      reason: formData.reason,
+      createdAt: new Date().toISOString().slice(0, 10),
+      status: "PENDING",
+    };
+
+    setItems((prev) => [newItem, ...prev]);
+    setFormData({
+      leaveType: "Nghỉ phép năm",
+      startDate: "",
+      endDate: "",
+      shiftName: "",
+      reason: "",
+    });
   };
 
-  const confirmExchange = () => {
-    // Giả lập logic gửi API createExchangeRequest(formData)
-    console.log("Đã gửi yêu cầu đổi ca:", formData);
-    
-    // Đóng modal, reset form và chuyển sang tab lịch sử
-    setIsConfirmModalOpen(false);
-    setFormData({ myShiftId: '', colleagueShiftId: '', reason: '' });
-    setActiveTab('history');
-    
-    // Có thể reload lại data lịch sử ở đây
-    alert("Gửi yêu cầu thành công!");
+  const handleCancel = (id) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Helper hàm lấy class màu cho badge trạng thái
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'Chờ người kia duyệt': return 'bg-yellow-100 text-yellow-800';
-      case 'Chờ Manager duyệt': return 'bg-orange-100 text-orange-800';
-      case 'Đã duyệt': return 'bg-green-100 text-green-800';
-      case 'Từ chối': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // === RENDER HELPERS ===
-  const renderCreateTab = () => (
-    <div className="bg-white p-6 rounded-lg shadow max-w-2xl">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Tạo yêu cầu mới</h2>
-      <form onSubmit={handleSubmitForm} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Ca của bạn</label>
-          <select 
-            name="myShiftId"
-            value={formData.myShiftId}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">-- Chọn ca làm việc của bạn --</option>
-            {myShifts.map(shift => (
-              <option key={shift.id} value={shift.id}>{shift.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Ca của người được đổi</label>
-          <select 
-            name="colleagueShiftId"
-            value={formData.colleagueShiftId}
-            onChange={handleInputChange}
-            className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">-- Chọn ca của đồng nghiệp --</option>
-            {colleagueShifts.map(shift => (
-              <option key={shift.id} value={shift.id}>{shift.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Lý do đổi ca</label>
-          <textarea 
-            name="reason"
-            value={formData.reason}
-            onChange={handleInputChange}
-            rows="3"
-            placeholder="Ví dụ: Mình có việc cá nhân, mong bạn hỗ trợ. Cảm ơn nhiều!"
-            className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500"
-          ></textarea>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6">
-            Gửi yêu cầu đổi ca
-          </Button>
-        </div>
-      </form>
-    </div>
+  const filteredItems = items.filter(
+    (item) => filterStatus === "ALL" || item.status === filterStatus
   );
 
-  const renderHistoryTab = () => (
-    <div className="bg-white rounded-lg shadow overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày gửi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ca của tôi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ca đổi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người đổi</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {historyData.map((item) => (
-            <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.date}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item.myShift}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item.targetShift}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{item.targetPerson}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(item.status)}`}>
-                  {item.status}
-                </span>
-              </td>
-            </tr>
-          ))}
-          {historyData.length === 0 && (
-            <tr>
-              <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">Chưa có dữ liệu đổi ca.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  // === MAIN JSX ===
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Yêu cầu đổi ca</h1>
-        <p className="text-gray-500 mt-1">Quản lý và tạo các yêu cầu thay đổi lịch làm việc của bạn.</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          onClick={() => setActiveTab('create')}
-          className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'create' 
-              ? 'border-blue-500 text-blue-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          Tạo yêu cầu
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'history' 
-              ? 'border-blue-500 text-blue-600' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          Lịch sử đổi ca
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="mb-8">
-        {activeTab === 'create' ? renderCreateTab() : renderHistoryTab()}
-      </div>
-
-      {/* Confirmation Modal */}
-      <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Xác nhận yêu cầu đổi ca">
-        <div className="p-4">
-          <p className="text-sm text-gray-600 mb-4">
-            Bạn có chắc chắn muốn gửi yêu cầu đổi ca này không? Người được chọn sẽ nhận được thông báo để xác nhận.
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Đơn Xin Nghỉ Phép</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Đăng ký nghỉ phép và theo dõi tiến độ phê duyệt từ Quản lý
           </p>
-          <div className="bg-gray-50 p-3 rounded-md text-sm mb-6 border border-gray-200">
-            <p><span className="font-medium">Ca của bạn:</span> {myShifts.find(s => s.id === formData.myShiftId)?.label}</p>
-            <p className="mt-2"><span className="font-medium">Ca đổi với:</span> {colleagueShifts.find(s => s.id === formData.colleagueShiftId)?.label}</p>
-          </div>
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={() => setIsConfirmModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={confirmExchange} className="bg-blue-600 hover:bg-blue-700 text-white">
-              Xác nhận gửi
-            </Button>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm">
+            <span className="text-slate-500">Đơn chờ duyệt: </span>
+            <span className="font-bold text-amber-600">
+              {items.filter((i) => i.status === "PENDING").length}
+            </span>
           </div>
         </div>
-      </Modal>
+      </div>
+
+      {/* Main Grid: 2 Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Form */}
+        <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 h-fit">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4">Tạo đơn xin nghỉ</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Loại nghỉ phép *
+              </label>
+              <select
+                name="leaveType"
+                value={formData.leaveType}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Nghỉ phép năm">Nghỉ phép năm</option>
+                <option value="Nghỉ ốm">Nghỉ ốm</option>
+                <option value="Nghỉ việc riêng">Nghỉ việc riêng (Không lương)</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Từ ngày *
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Đến ngày *
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Ca xin nghỉ
+              </label>
+              <input
+                type="text"
+                name="shiftName"
+                value={formData.shiftName}
+                onChange={handleChange}
+                placeholder="VD: Ca Sáng (07:00 - 12:00) hoặc Cả ngày"
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Lý do xin nghỉ *
+              </label>
+              <textarea
+                name="reason"
+                rows={3}
+                value={formData.reason}
+                onChange={handleChange}
+                placeholder="Nhập lý do xin nghỉ..."
+                required
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition cursor-pointer"
+            >
+              Gửi đơn xin nghỉ
+            </button>
+          </form>
+        </div>
+
+        {/* Right Column: List & Filter */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <h2 className="text-lg font-semibold text-slate-800">Danh sách đơn xin nghỉ</h2>
+            <div className="flex gap-2">
+              {["ALL", "PENDING", "APPROVED", "REJECTED"].map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                    filterStatus === status
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {status === "ALL" ? "Tất cả" : STATUS_BADGE[status]?.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="py-12 text-center text-slate-500 text-sm">Đang tải dữ liệu...</div>
+          ) : filteredItems.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-sm">
+              Không có đơn xin nghỉ nào phù hợp.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs uppercase text-slate-500 bg-slate-50">
+                    <th className="py-3 px-4">Mã</th>
+                    <th className="py-3 px-4">Loại nghỉ / Ca</th>
+                    <th className="py-3 px-4">Thời gian</th>
+                    <th className="py-3 px-4">Lý do</th>
+                    <th className="py-3 px-4">Trạng thái</th>
+                    <th className="py-3 px-4 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm">
+                  {filteredItems.map((item) => {
+                    const badge = STATUS_BADGE[item.status] || STATUS_BADGE.PENDING;
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="py-3.5 px-4 font-medium text-slate-700">{item.id}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-medium text-slate-800">{item.leaveType}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{item.shiftName}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-700">
+                          {item.startDate} → {item.endDate}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500">{item.reason}</td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          {item.status === "PENDING" && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancel(item.id)}
+                              className="text-xs text-rose-600 hover:text-rose-700 font-medium cursor-pointer"
+                            >
+                              Hủy
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
